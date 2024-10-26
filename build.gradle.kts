@@ -18,11 +18,11 @@ extra["projectConfigs"] = mapOf(
     ),
     "zlib" to mapOf(
         "libVersion" to "1.3.1",
-        "libName" to "Zlib"
+        "libName" to "zlib"
     ),
     "libpng" to mapOf(
         "libVersion" to "1.6.44",
-        "libName" to "Libpng"
+        "libName" to "libpng"
     ),
     "curl" to mapOf(
         "libVersion" to "8.10.1",
@@ -30,7 +30,7 @@ extra["projectConfigs"] = mapOf(
     ),
     "utf8proc" to mapOf(
         "libVersion" to "2.9.0",
-        "libName" to "Utf8proc"
+        "libName" to "utf8proc"
     ),
     "gmp" to mapOf(
         "libVersion" to "6.3.0",
@@ -38,7 +38,7 @@ extra["projectConfigs"] = mapOf(
     ),
     "blst" to mapOf(
         "libVersion" to "0.3.10",
-        "libName" to "Blst"
+        "libName" to "blst"
     )
 )
 
