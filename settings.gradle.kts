@@ -10,11 +10,11 @@ pluginManagement {
     }
 }
 
-include("curl")
+// include("curl")
 include("openssl")
-include("utf8proc")
-include("gmp")
-include("jsoncpp")
-include("zlib")
-include("libpng")
-include("blst")
+// include("utf8proc")
+// include("gmp")
+// include("jsoncpp")
+// include("zlib")
+// include("libpng")
+// include("blst")s
