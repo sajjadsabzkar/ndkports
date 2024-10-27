@@ -1,6 +1,6 @@
 # NDK Ports Guide
 
-This repository was forked from [the official NDK Ports repository](https://android.googlesource.com/platform/tools/ndkports/+/refs/heads/main). It provides instructions and tools for building and publishing C++ library ports for use with the Android NDK and React Native.
+This repository was forked from [the official NDK Ports repository](https://android.googlesource.com/platform/tools/ndkports/+/refs/heads/main). It provides instructions and tools for building and publishing C++ library ports for use with the Android NDK.
 
 ## Project Goal
 
