@@ -17,6 +17,7 @@ The following libraries are currently set up to be built with this project:
 - `openssl`
 - `utf8proc`
 - `zlib`
+- `sodium`
 
 You can manage library inclusion by adjusting the `settings.gradle.kts` file.
 
