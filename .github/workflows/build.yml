@@ -84,21 +84,23 @@ jobs:
 
       - name: Build ${{ matrix.name }}
         run: |
-          ./gradlew :${{ matrix.name }}:distZip \
+          ./gradlew :${{ matrix.name }}:buildPort \
             -PndkPath=$ANDROID_NDK_HOME \
             -Psigning.gnupg.keyName=${{ secrets.GPG_KEY_ID }} \
             -Psigning.gnupg.passphrase=${{ secrets.GPG_PASSPHRASE }}
 
-      - name: Prepare release artifacts
+      - name: Package artifacts
         run: |
-          cd build/distributions
-          # Get the existing zip file name
-          ZIP_FILE=$(ls *.zip)
-          # Generate checksums without renaming
-          sha256sum "$ZIP_FILE" > "$ZIP_FILE.sha256"
-          sha1sum "$ZIP_FILE" > "$ZIP_FILE.sha1"
+          # Create a zip file from the build output
+          mkdir -p build/distributions
+          cd build
+          zip -r distributions/${{ matrix.name }}-${{ matrix.version }}.zip port
+          cd distributions
+          # Generate checksums
+          sha256sum ${{ matrix.name }}-${{ matrix.version }}.zip > ${{ matrix.name }}-${{ matrix.version }}.zip.sha256
+          sha1sum ${{ matrix.name }}-${{ matrix.version }}.zip > ${{ matrix.name }}-${{ matrix.version }}.zip.sha1
           # Generate signature
-          gpg --armor --detach-sign "$ZIP_FILE"
+          gpg --armor --detach-sign ${{ matrix.name }}-${{ matrix.version }}.zip
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -126,7 +128,7 @@ jobs:
           name: ${{ matrix.name }}-build-artifacts
           path: artifacts
 
-      - name: Create Initial Release
+      - name: Create Release
         id: create_release
         uses: softprops/action-gh-release@v1
         with:
@@ -140,128 +142,13 @@ jobs:
           body: |
             NDK Ports for ${{ matrix.libName }} version ${{ matrix.version }}
 
-            ### Maven Central
-            The artifacts are being published to Maven Central. This message will be updated once publishing is complete.
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            This release contains the prebuilt libraries for Android NDK in the following architectures:
+            - armeabi-v7a
+            - arm64-v8a
+            - x86
+            - x86_64
 
-  publish:
-    needs: [release, detect-projects]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    if: github.event_name == 'push' && github.ref == 'refs/heads/release'
-    strategy:
-      matrix: ${{fromJson(needs.detect-projects.outputs.matrix)}}
-      fail-fast: false
-    steps:
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ matrix.name }}-build-artifacts
-          path: artifacts
-
-      - name: Create publish script
-        run: |
-          cat > publish.sh << 'EOF'
-          #!/bin/bash
-
-          # Set variables from environment
-          USERNAME="${MAVEN_USERNAME}"
-          PASSWORD="${MAVEN_PASSWORD}"
-          BUNDLE_FILE="./artifacts/${{ matrix.name }}-${{ matrix.version }}.zip"
-
-          # Generate Bearer token
-          TOKEN=$(printf "$USERNAME:$PASSWORD" | base64)
-
-          # Upload the deployment bundle
-          echo "Uploading the deployment bundle..."
-          RESPONSE=$(curl --silent --request POST \
-            --header "Authorization: Bearer $TOKEN" \
-            --form "bundle=@$BUNDLE_FILE" \
-            --form-string "name=io.github.ronickg:${{ matrix.name }}:${{ matrix.version }}" \
-            --form-string "publishingType=AUTOMATIC" \
-            'https://central.sonatype.com/api/v1/publisher/upload')
-
-          DEPLOYMENT_ID=$(echo "$RESPONSE" | tr -d '\n')
-
-          if [ -z "$DEPLOYMENT_ID" ]; then
-            echo "Failed to upload the bundle. Exiting."
-            exit 1
-          fi
-
-          echo "Deployment ID: $DEPLOYMENT_ID"
-
-          # Poll the status until it's published or fails
-          STATUS="PENDING"
-          MAX_ATTEMPTS=30  # 30 minutes maximum (30 * 60 seconds)
-          ATTEMPT=0
-
-          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
-            echo "Checking deployment status... (Attempt $((ATTEMPT + 1))/$MAX_ATTEMPTS, $(($ATTEMPT * 1)) minutes elapsed)"
-
-            RESPONSE=$(curl --silent --request POST \
-              --header "Authorization: Bearer $TOKEN" \
-              "https://central.sonatype.com/api/v1/publisher/status?id=$DEPLOYMENT_ID")
-
-            STATUS=$(echo "$RESPONSE" | jq -r '.deploymentState')
-            echo "Current Status: $STATUS"
-
-            case $STATUS in
-              "PUBLISHED")
-                echo "Successfully published to Maven Central!"
-                echo "PUBLISH_SUCCESS=true" >> $GITHUB_ENV
-                exit 0
-                ;;
-              "FAILED")
-                echo "Deployment failed. Error details:"
-                echo "$RESPONSE" | jq -r '.errors[]'
-                exit 1
-                ;;
-              "PENDING"|"VALIDATING"|"PUBLISHING")
-                # These are expected intermediate states, continue waiting
-                ;;
-              *)
-                echo "Unknown status: $STATUS"
-                echo "Full response: $RESPONSE"
-                exit 1
-                ;;
-            esac
-
-            ATTEMPT=$((ATTEMPT + 1))
-            sleep 60
-          done
-
-          echo "Timeout waiting for publication after 30 minutes. Last status: $STATUS"
-          exit 1
-          EOF
-
-          chmod +x publish.sh
-
-      - name: Run publish script
-        env:
-          MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
-          MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
-        run: ./publish.sh
-      - name: Update Release with Maven Information
-        if: env.PUBLISH_SUCCESS == 'true'
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ matrix.name }}-${{ matrix.version }}
-          body: |
-            NDK Ports for ${{ matrix.libName }} version ${{ matrix.version }}
-
-            ### Maven Central
-            The artifacts are available on Maven Central:
-            ```groovy
-            implementation 'io.github.ronickg:${{ matrix.name }}:${{ matrix.version }}'
-            ```
-
-            Direct link: [https://repo1.maven.org/maven2/io/github/ronickg/${{ matrix.name }}/${{ matrix.version }}/](https://repo1.maven.org/maven2/io/github/ronickg/${{ matrix.name }}/${{ matrix.version }}/)
-
-            Sonatype link: [https://central.sonatype.com/artifact/io.github.ronickg/${{ matrix.name }}/${{ matrix.version }}](https://central.sonatype.com/artifact/io.github.ronickg/${{ matrix.name }}/${{ matrix.version }})
+            The artifacts include both minimal and full builds of the library, along with headers and static/dynamic libraries.
           draft: false
           prerelease: false
         env:
