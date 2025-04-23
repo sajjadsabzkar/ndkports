@@ -208,48 +208,6 @@ tasks.prefabPackage {
     }
 }
 
-publishing {
-    publications {
-        create<MavenPublication>("maven") {
-            from(components["prefab"])
-            pom {
-                name.set("libsodium")
-                description.set("The ndkports AAR for libsodium.")
-                val repoUrl = "https://github.com/${System.getenv("GITHUB_REPOSITORY") ?: "user/repo"}"
-                url.set(repoUrl)
-                licenses {
-                    license {
-                        name.set("ISC License")
-                        url.set("https://github.com/jedisct1/libsodium/blob/master/LICENSE")
-                        distribution.set("repo")
-                    }
-                }
-                developers {
-                    developer {
-                        name.set("Ronald")
-                    }
-                }
-                scm {
-                    url.set(repoUrl)
-                    connection.set("scm:git:${repoUrl}.git")
-                }
-            }
-        }
-    }
-
-    repositories {
-        maven {
-            url = uri("${project.buildDir}/repository")
-        }
-    }
-}
-
-// Configure signing
-signing {
-    useGpgCmd()
-    sign(publishing.publications["maven"])
-}
-
 distributions {
     main {
         contents {
