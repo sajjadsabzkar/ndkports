@@ -241,7 +241,7 @@ distributions {
 
 tasks {
     distZip {
-        dependsOn("publish")
+        //dependsOn("publish")
         destinationDirectory.set(File(rootProject.buildDir, "distributions"))
     }
 }
